@@ -6,23 +6,39 @@ import { transactionSchema, TransactionFormData } from "@/validations/validation
 import { useTransactionStore } from "@/services/useTransactionStore";
 import { Transaction } from "@/types";
 
+/**
+ * Propiedades del componente TransactionForm.
+ */
 interface TransactionFormProps {
+  /** Función para cerrar el formulario o el modal que lo contiene. */
   onClose: () => void;
+  /** Objeto opcional; si se provee, el formulario se inicializa en modo edición. */
   transaction?: Transaction;
 }
 
+/**
+ * Formulario de transacciones (Ingresos/Gastos).
+ * Maneja la creación y actualización de registros utilizando validación con Zod.
+ */
 export default function TransactionForm({ onClose, transaction }: TransactionFormProps) {
+  // Consumo de acciones y estado global del Store de transacciones
   const { addTransaction, updateTransaction, isLoading } = useTransactionStore();
 
-  // Determinar si estamos en modo edición
+  /** * Determina si el componente está operando en modo edición.
+   * La doble negación (!!) convierte el objeto en undefined o un booleano puro.
+   */
   const isEditMode = !!transaction;
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<TransactionFormData>({
+  /**
+   * Inicialización de React Hook Form.
+   * - register: Vincula los inputs con el estado del formulario.
+   * - handleSubmit: Función que envuelve el onSubmit para ejecutar validaciones primero.
+   * - errors: Contiene los mensajes de error generados por el esquema de Zod.
+   */
+  const { register, handleSubmit, formState: { errors }, } = useForm({
+    // Aplica reglas de validación definidas en transactionSchema
     resolver: zodResolver(transactionSchema),
+    // Si es edición, cargamos los datos existentes; si no, valores base.
     defaultValues: transaction
       ? {
         title: transaction.title,
@@ -33,29 +49,33 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
       }
       : {
         type: "expense",
-        date: new Date().toISOString().split("T")[0],
+        date: new Date().toISOString().split("T")[0], // Fecha actual en formato YYYY-MM-DD
       },
   });
 
-
+  /**
+   * Procesa el envío del formulario tras una validación exitosa.
+   * @param data - Objeto con los datos validados del formulario.
+   */
   const onSubmit = async (data: TransactionFormData) => {
     try {
-      if (isEditMode) {
-        // Actualizar transacción existente
+      if (isEditMode && transaction) {
+        // Actualización: Combinamos los nuevos datos con el ID original.
         await updateTransaction({ ...data, id: transaction.id });
       } else {
-        // Crear nueva transacción
+        // Creación: Enviamos el objeto de datos limpio.
         await addTransaction(data);
       }
-      onClose();
+
+      onClose(); // Cierra el formulario tras completar la operación
     } catch (error) {
-      console.error("Error al guardar:", error);
+      console.error("Error al guardar la transacción:", error);
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* Título */}
+      {/* SECCIÓN: Título de la Transacción */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Título
@@ -73,7 +93,7 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
         )}
       </div>
 
-      {/* Monto y Tipo */}
+      {/* SECCIÓN: Monto (Numérico) y Tipo (Select) */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -86,6 +106,7 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
             <input
               type="number"
               step="0.01"
+              // valueAsNumber asegura que el dato llegue al onSubmit como número y no como string
               {...register("amount", { valueAsNumber: true })}
               className={`w-full border rounded-lg pl-8 pr-4 py-2.5 outline-none transition-all ${errors.amount
                 ? "border-red-500 focus:ring-2 focus:ring-red-200"
@@ -113,7 +134,7 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
         </div>
       </div>
 
-      {/* Categoría */}
+      {/* SECCIÓN: Categoría */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Categoría
@@ -131,7 +152,7 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
         )}
       </div>
 
-      {/* Fecha */}
+      {/* SECCIÓN: Fecha */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Fecha
@@ -149,7 +170,7 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
         )}
       </div>
 
-      {/* Botones de acción */}
+      {/* SECCIÓN: Acciones (Cancelar y Guardar) */}
       <div className="flex gap-3 pt-2">
         <button
           type="button"
@@ -160,7 +181,7 @@ export default function TransactionForm({ onClose, transaction }: TransactionFor
         </button>
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading} // Previene múltiples clics durante el guardado
           className="flex-1 bg-app-purple text-white py-2.5 rounded-lg font-semibold hover:brightness-110 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {isLoading ? (

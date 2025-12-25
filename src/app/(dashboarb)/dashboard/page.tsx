@@ -9,18 +9,27 @@ import TransactionForm from "@/components/forms/TransactionForm";
 import { Plus, ArrowUpDown, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Edit2, Trash2 } from "lucide-react";
 import { Transaction } from "@/types";
 
+/**
+ * Gestiona la visualización, filtrado y acciones de transacciones.
+ */
 export default function DashboardPage() {
+  // --- ESTADO GLOBAL ---
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { transactions, getAllTransactions, deleteTransaction, isLoading: dataLoading } = useTransactionStore();
 
+  // --- ESTADO LOCAL (UI) ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  // Estado para el flujo de eliminación
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
+  /**
+   * Redirige al login si no hay sesión y dispara la carga inicial de datos.
+   */
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       redirect("/login");
@@ -28,7 +37,10 @@ export default function DashboardPage() {
     getAllTransactions();
   }, [isAuthenticated, authLoading, getAllTransactions]);
 
-  // Calcular resumen financiero
+  /**
+   * Cálculo del Resumen Financiero.
+   * Se utiliza useMemo para evitar recalcular totales si las transacciones no han cambiado.
+   */
   const { totalIncome, totalExpenses, netBalance } = useMemo(() => {
     const income = transactions
       .filter((t) => t.type === "income")
@@ -36,6 +48,7 @@ export default function DashboardPage() {
     const expenses = transactions
       .filter((t) => t.type === "expense")
       .reduce((acc, t) => acc + t.amount, 0);
+
     return {
       totalIncome: income,
       totalExpenses: expenses,
@@ -43,7 +56,10 @@ export default function DashboardPage() {
     };
   }, [transactions]);
 
-  // Filtrar y ordenar transacciones
+  /**
+   * Lógica de Procesamiento de Lista.
+   * Aplica filtros de tipo (ingreso/gasto) y ordenamiento por fecha.
+   */
   const processedTransactions = useMemo(() => {
     return transactions
       .filter((t) => (filterType === "all" ? true : t.type === filterType))
@@ -54,25 +70,27 @@ export default function DashboardPage() {
       });
   }, [transactions, filterType, sortOrder]);
 
-  // Abrir modal para crear nueva transacción
+  // --- MANEJADORES DE EVENTOS ---
+
   const handleCreate = () => {
     setEditingTransaction(undefined);
     setIsModalOpen(true);
   };
 
-  // Abrir modal para editar transacción
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setIsModalOpen(true);
   };
 
-  // Eliminar transacción con confirmación
   const handleDeleteClick = (transaction: Transaction) => {
     setTransactionToDelete(transaction);
     setIsDeleteModalOpen(true);
   };
 
-
+  /**
+   * Pantalla de carga (Spinner).
+   * Se muestra durante la validación de auth o la carga inicial de datos.
+   */
   if (authLoading || (dataLoading && transactions.length === 0)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
@@ -86,24 +104,22 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-12">
-      {/* Header */}
+      {/* Header con información de usuario y acción principal */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="Logo" className="rounded-xl object-contain shadow-lg shadow-app-purple/30" width={180} height={90} />
-
+            <img src="/logo.png" alt="Logo" className="rounded-xl shadow-lg shadow-app-purple/30" width={180} height={90} />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 leading-tight">Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-sm text-gray-500 font-medium">
                 Bienvenido, <span className="text-app-purple">{user?.name}</span>
               </p>
             </div>
           </div>
 
-          {/* Botón nueva transacción */}
           <button
             onClick={handleCreate}
-            className="flex items-center gap-2 bg-app-purple hover:brightness-110 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-app-purple/20 active:scale-95"
+            className="flex items-center gap-2 bg-app-purple hover:brightness-110 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95"
           >
             <Plus size={20} strokeWidth={3} />
             Nueva Transacción
@@ -111,8 +127,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        {/* Cards de resumen */}
+      <main className="max-w-7xl mx-auto px-4 mt-8">
+        {/* Grilla de Resumen */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <SummaryCard
             title="Balance Neto"
@@ -134,19 +150,19 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Tabla de transacciones */}
+        {/* Listado y Filtros */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Controles de filtro */}
           <div className="p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
-            <h2 className="text-lg font-bold text-gray-800">Historial de Transacciones</h2>
+            <h2 className="text-lg font-bold text-gray-800">Historial</h2>
 
             <div className="flex items-center gap-3">
+              {/* Filtro por Tipo */}
               <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
                 <Filter size={16} className="ml-2 text-gray-400" />
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value as any)}
-                  className="bg-transparent text-sm font-semibold focus:outline-none py-1 pr-3"
+                  className="bg-transparent text-sm font-semibold focus:outline-none"
                 >
                   <option value="all">Todos</option>
                   <option value="income">Ingresos</option>
@@ -154,9 +170,10 @@ export default function DashboardPage() {
                 </select>
               </div>
 
+              {/* Toggle de Ordenamiento */}
               <button
                 onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                className="flex items-center gap-2 text-sm font-semibold text-gray-600 bg-white px-4 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-600 bg-white px-4 py-2.5 rounded-xl border border-gray-200"
               >
                 <ArrowUpDown size={16} />
                 {sortOrder === "asc" ? "Antiguas" : "Recientes"}
@@ -164,10 +181,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Tabla */}
+          {/* Tabla de Datos */}
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50/50 text-gray-400 text-[11px] uppercase tracking-wider font-bold">
+              <thead className="bg-gray-50/50 text-gray-400 text-[11px] uppercase font-bold">
                 <tr>
                   <th className="px-8 py-4">Descripción</th>
                   <th className="px-8 py-4">Fecha</th>
@@ -179,9 +196,7 @@ export default function DashboardPage() {
                 {processedTransactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-gray-50/80 transition-colors group">
                     <td className="px-8 py-5">
-                      <div className="font-bold text-gray-900 group-hover:text-app-purple transition-colors">
-                        {tx.title}
-                      </div>
+                      <div className="font-bold text-gray-900">{tx.title}</div>
                       <div className="text-xs font-medium text-gray-400">{tx.category}</div>
                     </td>
                     <td className="px-8 py-5 text-sm font-medium text-gray-500">
@@ -193,18 +208,10 @@ export default function DashboardPage() {
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(tx)}
-                          className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
-                          title="Editar"
-                        >
+                        <button onClick={() => handleEdit(tx)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
                           <Edit2 size={18} />
                         </button>
-                        <button
-                          onClick={() => handleDeleteClick(tx)}
-                          className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                          title="Eliminar"
-                        >
+                        <button onClick={() => handleDeleteClick(tx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
                           <Trash2 size={18} />
                         </button>
                       </div>
@@ -217,7 +224,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Modal para crear/editar */}
+      {/* MODALES: Gestión de formularios y confirmaciones */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -228,39 +235,25 @@ export default function DashboardPage() {
           transaction={editingTransaction}
         />
       </Modal>
-      {/* Modal de confirmación de eliminación */}
+
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         title="Confirmar eliminación"
       >
         <p className="text-gray-600 mb-6">
-          ¿Estás seguro de que deseas eliminar la transacción
-          <span className="font-semibold text-gray-900">
-            {" "}“{transactionToDelete?.title}”
-          </span>?
-          <span className="block text-sm text-red-500 mt-2">
-            Esta acción no se puede deshacer.
-          </span>
+          ¿Estás seguro de eliminar <span className="font-semibold text-gray-900">“{transactionToDelete?.title}”</span>?
         </p>
-
         <div className="flex justify-end gap-3">
-          <button
-            onClick={() => setIsDeleteModalOpen(false)}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold"
-          >
-            Cancelar
-          </button>
-
+          <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-gray-700">Cancelar</button>
           <button
             onClick={async () => {
-              if (!transactionToDelete) return;
-
-              await deleteTransaction(transactionToDelete.id);
-              setIsDeleteModalOpen(false);
-              setTransactionToDelete(null);
+              if (transactionToDelete) {
+                await deleteTransaction(transactionToDelete.id);
+                setIsDeleteModalOpen(false);
+              }
             }}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold"
           >
             Eliminar
           </button>
@@ -270,7 +263,9 @@ export default function DashboardPage() {
   );
 }
 
-// Componente de card de resumen
+/**
+ * Componente atómico para mostrar métricas financieras.
+ */
 function SummaryCard({ title, amount, icon, accentColor }: {
   title: string;
   amount: number;
@@ -278,12 +273,12 @@ function SummaryCard({ title, amount, icon, accentColor }: {
   accentColor: string;
 }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-5 transition-transform hover:scale-[1.02]">
+    <div className="bg-white p-6 rounded-2xl border border-gray-100 flex items-center gap-5 transition-transform hover:scale-[1.02]">
       <div className={`p-4 rounded-2xl ${accentColor} shrink-0`}>
         {icon}
       </div>
       <div>
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-tight">{title}</p>
+        <p className="text-xs font-bold text-gray-400 uppercase">{title}</p>
         <p className="text-2xl font-black text-gray-900 mt-0.5">${amount.toLocaleString()}</p>
       </div>
     </div>

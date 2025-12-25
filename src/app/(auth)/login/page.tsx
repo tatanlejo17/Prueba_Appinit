@@ -6,23 +6,44 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { loginSchema, LoginFormData } from "@/validations/validations";
 
+/**
+ * Página de Login
+ * * Este componente gestiona el acceso de usuarios, validando las credenciales
+ * mediante un esquema de Zod y coordinando la redirección post-login.
+ */
 export default function LoginPage() {
+  /** * Extraemos 'login' para ejecutar la acción y 'isLoading' para el feedback visual
+   * del estado global de autenticación.
+   */
   const { login, isLoading } = useAuth();
+
+  /** Hook de Next.js para gestionar la navegación programática. */
   const router = useRouter();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
+  /**
+   * Configuración de React Hook Form para el login.
+   * Se vincula con 'loginSchema' para asegurar que los datos cumplen con el formato
+   * antes de intentar el proceso de autenticación.
+   */
+  const { register, handleSubmit, formState: { errors }, } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
+  /**
+   * Función de envío de datos del formulario.
+   * @param data - Credenciales validadas (email y password).
+   */
   const onSubmit = async (data: LoginFormData) => {
     try {
+      // 1. Intentamos la autenticación a través del contexto global
       await login(data.email);
+
+      // 2. Si es exitoso, redirigimos al usuario al dashboard
       router.push("/dashboard");
     } catch (error) {
+      /**
+       * Manejo de excepciones de autenticación.
+       */
       console.error("Error al iniciar sesión", error);
     }
   };
@@ -30,17 +51,27 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-10 shadow-xl">
+
+        {/* Cabecera de la página: Logo y Bienvenida */}
         <div className="text-center">
-          <img src="/logo.png" alt="" className="block mx-auto rounded-xl mb-10 shadow-lg shadow-app-purple/30" width={300} height={150} />
+          <img
+            src="/logo.png"
+            alt="Logo de la aplicación"
+            className="block mx-auto rounded-xl mb-10 shadow-lg shadow-app-purple/30"
+            width={300}
+            height={150}
+          />
           <h2 className="text-4xl font-bold text-app-green">Bienvenido</h2>
           <p className="mt-4 text-gray-600">
             Ingresa a tu cuenta de prueba
           </p>
         </div>
 
+        {/* Formulario de acceso */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-5">
-            {/* Campo Email */}
+
+            {/* SECCIÓN: Identificación (Email) */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
               <input
@@ -57,7 +88,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Campo Contraseña */}
+            {/* SECCIÓN: Seguridad (Password) */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Contraseña</label>
               <input
@@ -75,6 +106,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Botón de acción principal con feedback de estado */}
           <button
             type="submit"
             disabled={isLoading}
@@ -82,6 +114,7 @@ export default function LoginPage() {
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
+                {/* Spinner visual de carga */}
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-app-green"></div>
                 Cargando...
               </span>
